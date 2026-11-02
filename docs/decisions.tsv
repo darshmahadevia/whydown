@@ -1,0 +1,13 @@
+ts	phase	decision	why	evidence	result
+2026-11-02T15:00:00Z	frame	Build CLI and stdio MCP first	The request centers on Docker diagnosis and assistant access	docs/plan.md	open
+2026-11-02T15:00:00Z	design	Use typed evidence and report shared across boundaries	Keep collection and outbound privacy independently testable	internal/domain/domain.go	open
+2026-11-02T15:00:00Z	verification	Separate fixture results from live provider and Docker results	Docker is unavailable in this workspace	docs/plan.md	live verification unavailable
+2026-11-02T16:00:00Z	integration	Redact against full environment before truncating metadata	A discarded definition must not leave its secret in logs	internal/docker/client_test.go	regression test passed
+2026-11-02T16:00:00Z	verification	Keep offline fixture score separate from live accuracy	Eight fixed fixtures only test lexical coverage	testdata/failures.json	8 of 8 fixture cases passed
+2026-11-02T16:00:00Z	integration	Exercise MCP through built executable	Package tests do not prove the command connects protocol wiring	cmd/whydown/main.go	initialize and tools/list passed
+2026-11-02T14:40:16.308043+00:00	verification	Fix MCP cancellation while stdin remains open	The executable smoke test found SIGTERM did not stop a blocked reader	scripts/smoke.py	SIGTERM smoke test and cancellation regression passed
+2026-11-02T14:44:38.447714+00:00	review	Redact sensitive command flag values across arguments	Argument boundaries previously hid credential labels	internal/redact/redact_test.go	targeted regressions passed
+2026-11-02T14:44:38.447714+00:00	review	Sanitize complete evidence before output limits	Clipping a known secret first exposed a fragment	internal/docker/client_test.go	targeted regressions passed
+2026-11-02T14:44:38.447714+00:00	review	Mask URL-valued sensitive assignments	Only connection settings should preserve URL context	internal/redact/redact_test.go	targeted regressions passed
+2026-11-02T14:44:38.447714+00:00	review	Include Docker startup errors in watch state	Created containers can fail without a die event	internal/docker/client_test.go	targeted regressions passed
+2026-11-02T14:45:31.963229+00:00	verification	Run final verification after review fixes	Verify changes together through package and executable checks	Makefile	make verify passed

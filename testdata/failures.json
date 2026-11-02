@@ -1,0 +1,10 @@
+[
+ {"name":"memory exhaustion","evidence":{"container":{"name":"worker","state":"exited"},"exit_code":137,"oom_killed":true,"memory_limit_bytes":33554432},"expected":["memory"]},
+ {"name":"localhost database","evidence":{"container":{"name":"web","state":"exited"},"exit_code":1,"env":["DATABASE_URL=postgres://app:fake-password@localhost:5432/app"],"logs":"connect tcp 127.0.0.1:5432: connection refused"},"expected":["network","hostname"]},
+ {"name":"unresolvable dependency","evidence":{"container":{"name":"api","state":"exited"},"exit_code":1,"logs":"lookup missing-db: no such host"},"expected":["hostname"]},
+ {"name":"unwritable volume","evidence":{"container":{"name":"worker","state":"exited"},"exit_code":1,"logs":"open /data/result: permission denied"},"expected":["permission"]},
+ {"name":"occupied port","evidence":{"container":{"name":"proxy","state":"created"},"error":"Bind for 0.0.0.0:8080 failed: port is already allocated"},"expected":["port"]},
+ {"name":"failed health check","evidence":{"container":{"name":"web","state":"running"},"health":"unhealthy","health_logs":["exit 1: HTTP status 500"]},"expected":["health"]},
+ {"name":"generic process failure","evidence":{"container":{"name":"job","state":"exited"},"exit_code":42,"logs":"startup failed"},"expected":["42","logs"]},
+ {"name":"insufficient evidence","evidence":{"container":{"name":"quiet","state":"running"}},"expected":["unknown"]}
+]

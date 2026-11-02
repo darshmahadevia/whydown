@@ -1,0 +1,6 @@
+/bin/
+/whydown
+/artifacts/
+.env
+.env.*
+!.env.example
