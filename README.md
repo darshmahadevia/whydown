@@ -1,74 +1,95 @@
 # Whydown
 
-Whydown explains why Docker containers fail. It collects logs, exit status, OOM flags, health checks, configuration, networks, and live resource usage. Groq or Google turns that evidence into a report with a likely cause, supporting facts, confidence, and suggested fixes.
+**Find out why your Docker container stopped.**
 
-Use it from the terminal or connect an assistant through its read-only MCP server. Whydown never executes a suggested fix.
+Whydown collects runtime evidence and asks Groq or Google Gemini to explain the failure. Each report includes a likely cause, confidence, supporting facts, and suggested fixes. Run it in your terminal or give an AI assistant access through MCP.
+
+Whydown reads container state. It never executes a suggested fix.
+
+## Demo
+
+A Python container tries to allocate 256 MiB under a 32 MiB limit. Docker kills it, and Whydown uses the real container evidence to explain why.
+
+[![Silent terminal recording of a Docker OOM failure and Whydown's Groq diagnosis](docs/assets/demo.gif)](docs/assets/demo.mp4)
+
+[Watch the silent MP4](docs/assets/demo.mp4) · [Replay the terminal recording](docs/assets/demo.cast) · [Record your own](docs/development.md#record-the-demo)
+
+The recording uses Groq. It shows actual command output, including the provider's suggested fixes. Those suggestions still need human review.
+
+## What it does
+
+- Diagnoses failures using logs, exit codes, OOM flags, health checks, configuration, networks, and live resource usage.
+- Watches for crashes, unhealthy containers, startup errors, and restart loops.
+- Returns readable reports or JSON for scripts.
+- Gives assistants read-only tools to list, inspect, and diagnose containers.
+- Offers an explicit offline mode with fixed diagnostic rules and no API key.
 
 ## Get started
 
-You need Go 1.26.5 or newer, Make, and access to a running Docker Engine or Docker Desktop. Run these commands from the repository root.
-
-Build the binary and list your containers, including stopped containers.
+You need Go 1.26.5 or newer, Make, and access to Docker Engine or Docker Desktop.
 
 ```sh
+git clone https://github.com/darshmahadevia/whydown.git
+cd whydown
 make build
 ./bin/whydown list
 ```
 
-Set `GROQ_API_KEY` in your shell, then diagnose a container. Replace `web` with a container name or ID from the list.
+Set your Groq API key, then replace `web` with a container name or ID from the list.
 
 ```sh
+export GROQ_API_KEY='YOUR_GROQ_API_KEY'
 ./bin/whydown diagnose web
 ```
 
-The report prints a summary, likely cause, confidence, suggested fixes, and supporting evidence. To try diagnosis without an API key, select the offline provider.
+To try it without a provider account, use the offline rules.
 
 ```sh
 ./bin/whydown diagnose --provider offline web
 ```
 
-Offline mode uses fixed rules with fewer diagnostic abilities than the AI providers. AI errors never silently fall back to offline mode.
+Offline mode has fewer diagnostic abilities than the AI providers. Provider errors never silently switch to offline mode.
 
 ## Use the CLI
 
-Flags follow the command and precede the container name or ID.
+Place flags after the command and before the container name or ID.
+
+| Command | What you get |
+| --- | --- |
+| `./bin/whydown list` | All containers, including stopped ones, as JSON. |
+| `./bin/whydown inspect web` | Sanitized container evidence as JSON. No API key needed. |
+| `./bin/whydown diagnose web` | A diagnosis from the configured provider. |
+| `./bin/whydown diagnose --json web` | A structured diagnosis. |
+| `./bin/whydown watch --json` | One JSON report per line as Docker failures occur. |
+| `./bin/whydown help` | Commands and flags. |
+
+The watcher monitors every container on the connected Docker host. It scans existing failures, listens for Docker events, and scans again every 15 seconds. Three restarts within a minute trigger a restart-loop report. It retries a disconnected Docker stream after five seconds. Press Ctrl+C to stop it.
+
+Reports can repeat across events or reconnections. Configure Docker health checks to detect applications that stop responding. Whydown does not probe application endpoints itself.
+
+## Choose a provider
+
+Groq is the default. To use Google, export `GOOGLE_API_KEY` or `GEMINI_API_KEY` and select `google`.
 
 ```sh
-./bin/whydown inspect web
-./bin/whydown diagnose --json web
-./bin/whydown watch --provider groq --json
-./bin/whydown help
-```
-
-`list` and `inspect` always print JSON and need no API key. `inspect` prints sanitized evidence so you can review what diagnosis uses. `diagnose` and `watch` print readable reports by default. Add `--json` for structured reports. In watch mode, each JSON report occupies one line.
-
-The watcher scans existing failures, listens for Docker failure events, and scans again every 15 seconds. It detects startup errors, unhealthy containers, and restart loops of at least three restarts within a minute. It retries a disconnected Docker stream after five seconds. Press Ctrl+C to stop it.
-
-Reports can repeat across events or reconnections. The watcher monitors all containers on the connected Docker host. It detects an unresponsive application through its Docker health check, so configure a health check for that purpose. Whydown does not probe application endpoints itself.
-
-## Configure a provider
-
-Groq is the default. To use Google, set `GOOGLE_API_KEY` or `GEMINI_API_KEY`, then select `google`.
-
-```sh
+export GOOGLE_API_KEY='YOUR_GOOGLE_API_KEY'
 ./bin/whydown diagnose --provider google web
 ./bin/whydown diagnose --provider google --model YOUR_MODEL web
 ```
 
-The following environment variables set credentials and defaults. Command flags override the provider and model defaults.
+Command flags override these environment defaults.
 
 | Variable | Purpose |
 | --- | --- |
-| `WHYDOWN_PROVIDER` | Default provider, `groq`, `google`, or `offline`. Defaults to `groq`. |
-| `WHYDOWN_MODEL` | Model name. The code defaults to `openai/gpt-oss-20b` for Groq and `gemini-3.5-flash-lite` for Google. |
+| `WHYDOWN_PROVIDER` | `groq`, `google`, or `offline`. Defaults to `groq`. |
+| `WHYDOWN_MODEL` | Model override. Code defaults are `openai/gpt-oss-20b` for Groq and `gemini-3.5-flash-lite` for Google. |
 | `GROQ_API_KEY` | Groq credential. |
-| `GOOGLE_API_KEY` | Google credential. Takes precedence over `GEMINI_API_KEY`. |
+| `GOOGLE_API_KEY` | Google credential, preferred over `GEMINI_API_KEY`. |
 | `GEMINI_API_KEY` | Alternative Google credential. |
-| `DOCKER_HOST` | Docker Engine address. |
-| `DOCKER_TLS_VERIFY` | Docker TLS verification setting. |
-| `DOCKER_CERT_PATH` | Directory with Docker TLS certificates. |
 
-[`.env.example`](.env.example) lists the provider settings. Whydown does not load `.env` files automatically. If you keep credentials in a local `.env`, export them when you load it so the binary inherits them.
+Whydown uses the Docker SDK's environment configuration, including `DOCKER_HOST`, `DOCKER_TLS_VERIFY`, and `DOCKER_CERT_PATH`.
+
+[`.env.example`](.env.example) lists the provider settings. Whydown does not load `.env` automatically. To load a local credential file and export its variables, run the following commands.
 
 ```sh
 set -a
@@ -76,114 +97,62 @@ source .env
 set +a
 ```
 
-Git ignores `.env` files. Restrict access to a credential file with `chmod 600 .env`.
+Git ignores `.env` files. Restrict access to your credential file with `chmod 600 .env`.
 
-## Connect an assistant
+## Connect an AI assistant
 
-Add a stdio MCP server to your assistant's configuration. Replace the command with the absolute path to your built binary and supply your provider credential.
+Add Whydown to an assistant that supports stdio MCP servers. Replace the binary path and credential in this configuration.
 
 ```json
 {
 	"mcpServers": {
 		"whydown": {
-			"command": "/absolute/path/to/Whydown/bin/whydown",
+			"command": "/absolute/path/to/whydown/bin/whydown",
 			"args": ["mcp", "--provider", "groq"],
 			"env": {
-				"GROQ_API_KEY": "YOUR_KEY"
+				"GROQ_API_KEY": "YOUR_GROQ_API_KEY"
 			}
 		}
 	}
 }
 ```
 
-For local use without an API key, change the provider to `offline` and omit `env`. An assistant can call `inspect_container` and reason about the evidence with its own model.
+The server exposes these read-only tools.
 
-The server exposes these tools.
-
-| Tool | Input | Result |
+| Tool | Arguments | Result |
 | --- | --- | --- |
-| `list_containers` | No arguments. | All containers on the connected Docker host. |
+| `list_containers` | None. | All containers on the connected Docker host. |
 | `inspect_container` | `container`, a name or ID. | Sanitized evidence. |
-| `diagnose_container` | `container`, a name or ID. | A diagnosis from the configured provider. |
+| `diagnose_container` | `container`, a name or ID. | A report from the selected provider. |
 
-The server uses MCP revision `2025-11-25` over newline-delimited stdio. Tool results contain text with JSON data. Standard output contains only protocol messages.
+For use without an API key, set the provider argument to `offline` and omit `env`. Your assistant can also call `inspect_container` and reason about the evidence with its own model.
 
-## Understand what leaves your machine
+The server supports MCP revision `2025-11-25` over newline-delimited stdio. Tool results contain text with JSON data. Standard output contains only protocol messages.
 
-With Groq or Google selected, diagnosis sends sanitized container evidence to that provider. Offline diagnosis and `inspect` need no AI provider calls.
+## Privacy and limits
 
-Whydown sanitizes metadata and decoded logs before applying output limits. It masks unknown environment values, URL credentials, sensitive command arguments, common credential assignments, bearer tokens, recognized API key formats, and private key blocks. Connection URL hosts remain available for diagnosis. The AI client sanitizes evidence again before each request and removes its own API credential.
+Groq and Google receive sanitized container evidence during diagnosis. `inspect` and offline diagnosis make no AI provider calls.
 
-Redaction is best effort. Unlabelled secrets, encoded secrets, and sensitive business data can remain in logs. Review `inspect` output before submitting evidence from sensitive workloads. The provider's data handling policies still apply.
+Whydown redacts credentials before it limits evidence size, then sanitizes again before provider requests. It masks unknown environment values, URL credentials, sensitive command arguments, common credential assignments, bearer tokens, recognized API key formats, and private key blocks. Connection URL hosts remain available for diagnosis.
 
-Collection has the following limits.
+Redaction is best effort. Unlabelled or encoded secrets and sensitive business data can remain in logs. Review `inspect` output before submitting sensitive workloads. The provider's data handling policies apply to submitted evidence.
 
 - Logs include at most 200 recent lines and 64 KiB of decoded text. Incomplete or oversized transport responses are omitted with a warning.
-- Environment, command, and network metadata have item and byte limits. Health history includes at most five entries.
-- Docker requests have deadlines. Live stats have a two-second deadline. Stopped containers have no current CPU or memory sample, which the evidence records as a warning.
+- Metadata has item and byte limits. Health history includes at most five entries.
+- Stopped containers have no live CPU or memory sample. Collection records missing observations as warnings.
+- Docker operations have deadlines, including two seconds for live stats. Provider requests have a 30-second timeout and size limits.
 
-Provider requests have a 30-second timeout, size limits, and JSON field validation. The prompt treats logs as untrusted evidence. A valid report can still be wrong. Review suggested fixes before acting on them.
+Reports can be wrong even when their JSON passes validation. Whydown keeps normal collection and diagnosis evidence in memory unless you redirect output. Verification scripts save artifacts to disk.
 
-Normal collection and diagnosis keep evidence in memory unless you redirect output. The verification scripts below save artifacts to disk.
+## Develop and verify
 
-## Verify a change
-
-Run the local checks from the repository root. These require Python 3 in addition to Go and Make.
+Run local verification with Go, Make, and Python 3. These checks need no Docker host or API key.
 
 ```sh
 make verify
 make eval
 ```
 
-`make verify` runs race tests, builds the binary, runs `go vet`, and checks the executable's offline evaluation, MCP discovery, and shutdown. These checks use simulated Docker and provider responses and require no running Docker host or API key.
+`make verify` runs race tests, vet, a build, and executable checks for offline evaluation, MCP discovery, and shutdown. `make eval` checks eight recorded failure cases against the offline rules. Its lexical score measures fixture coverage, not general diagnosis accuracy.
 
-`make eval` evaluates the offline rules against eight recorded fixtures. They cover memory exhaustion, a localhost database address, an unresolvable dependency, permissions, occupied ports, health checks, generic process failure, and insufficient evidence.
-
-To evaluate an AI provider against the same fixtures, set its API key and run the following command.
-
-```sh
-./bin/whydown eval --provider groq --cases testdata/failures.json
-```
-
-The evaluator checks for expected terms in the summary, cause, or fixes. Provider errors and missing terms count as failures. Any failed case produces exit status 1. This lexical check measures fixture coverage. It does not establish diagnosis accuracy or prove that a suggested fix works.
-
-### Run live Docker checks
-
-These scripts require Python 3, the Docker CLI, and a running Docker host. They pull Python and BusyBox images, create containers with unique names, and remove their own containers in cleanup blocks. The default provider is offline.
-
-```sh
-make live-eval
-make live-integration
-```
-
-`live-eval` creates five faults, collects real evidence, writes `artifacts/live-cases.json`, and evaluates the diagnoses. The faults are an OOM kill, a refused localhost connection, a permission error, an application port conflict, and a failing health check.
-
-`live-integration` checks live resource collection, redaction, watcher behavior, MCP tools, and shutdown. It writes `artifacts/live-integration.json`.
-
-To include provider calls, load your credentials and run a script with its provider flag.
-
-```sh
-python3 scripts/live-eval.py --provider google
-python3 scripts/live-integration.py --provider groq
-```
-
-The integration script uses offline diagnosis for its watcher and the selected provider for MCP diagnosis. To test the complete Docker event to Groq report path, run `python3 scripts/live-watch-ai.py` with a Groq credential set. That optional check requires an empty Docker host to avoid submitting unrelated container logs.
-
-See [recorded verification results](docs/verification.md) for prior Docker and Groq runs, their limits, and checks that remain untested.
-
-## Find the implementation
-
-The code is organized by responsibility.
-
-| Directory | Responsibility |
-| --- | --- |
-| `cmd/whydown` | CLI configuration, commands, and output. |
-| `internal/domain` | Container evidence and diagnosis report types. |
-| `internal/docker` | Docker SDK collection and monitoring. |
-| `internal/redact` | Credential filtering. |
-| `internal/ai` | Provider requests and offline rules. |
-| `internal/mcp` | Assistant tools and stdio transport. |
-| `internal/eval` | Fixture loading and scoring. |
-| `scripts` | Executable smoke tests and live Docker checks. |
-
-See the [implementation plan](docs/plan.md) and [decision trail](docs/decisions.tsv) for project context.
+For live Docker experiments, provider evaluation, code organization, and demo recording instructions, see the [development guide](docs/development.md). Prior runs and their limits are in [verification results](docs/verification.md). The [implementation plan](docs/plan.md) and [decision trail](docs/decisions.tsv) describe project context.

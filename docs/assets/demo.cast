@@ -1,0 +1,11 @@
+{"version":2,"width":112,"height":38,"timestamp":1793632917,"command":"bash scripts/demo.sh","title":"Whydown | Real Docker OOM diagnosis | Groq","env":{"SHELL":"/bin/zsh"}}
+[0.580317, "o", "\u001b[2J\u001b[H\u001b[1;36mWhydown\u001b[0m\r\nA real Docker failure, explained from runtime evidence.\r\nProvider: groq | Suggested fixes are advice only.\r\n\r\n"]
+[3.588327, "o", "\u001b[1;32m$\u001b[0m docker run --name whydown-demo-oom-23247 --memory 32m --memory-swap 32m \\\r\n    python:3.12-alpine python -c 'x = bytearray(256*1024*1024)'\r\n"]
+[5.794097, "o", "\r\nContainer exited with code 137.\r\n\r\n"]
+[7.799189, "o", "\u001b[1;32m$\u001b[0m docker inspect --format 'Exit={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}}' whydown-demo-oom-23247\r\n"]
+[7.834059, "o", "Exit=137 OOMKilled=true\r\n"]
+[12.877311, "o", "\u001b[2J\u001b[H\u001b[1;36mWhydown / Diagnose\u001b[0m\r\n\r\n"]
+[12.877323, "o", "\u001b[1;32m$\u001b[0m ./bin/whydown diagnose --provider groq whydown-demo-oom-23247\r\n"]
+[16.723105, "o", "\r\nwhydown-demo-oom-23247\r\nThe container stopped because it was killed by the OOM (out‑of‑memory) killer.\r\n\r\nWhy: out‑of‑memory (OOM) kill due to memory allocation exceeding the 32 MiB limit\r\nConfidence: high | Provider: groq\r\n  - Increase the container memory limit (e.g., via --memory or Docker compose memory settings)\r\n  - Reduce the memory required by the application, e.g., allocate a smaller bytearray or process data in chunks\r\n  - Use a base image with a smaller memory footprint or run on a host with more RAM\r\n  - Enable swap or adjust overcommit settings if appropriate for the workload\r\nEvidence: exit_code is 137, which indicates termination by SIGKILL (commonly OOM)\r\nEvidence: oom_killed flag is true\r\nEvidence: memory_limit_bytes is 33554432 (32 MiB)\r\nEvidence: command tries to allocate 256 MiB (bytearray of 256*1024*1024)\r\nEvidence: container state is exited and logs are empty, matching an abrupt kill\r\n"]
+[29.737635, "o", "\r\n\u001b[1;36mEvidence collected. Fixes suggested. No fixes executed.\u001b[0m\r\n"]
+[33.809396, "x", "0"]
