@@ -11,3 +11,8 @@ ts	phase	decision	why	evidence	result
 2026-11-02T14:44:38.447714+00:00	review	Mask URL-valued sensitive assignments	Only connection settings should preserve URL context	internal/redact/redact_test.go	targeted regressions passed
 2026-11-02T14:44:38.447714+00:00	review	Include Docker startup errors in watch state	Created containers can fail without a die event	internal/docker/client_test.go	targeted regressions passed
 2026-11-02T14:45:31.963229+00:00	verification	Run final verification after review fixes	Verify changes together through package and executable checks	Makefile	make verify passed
+2026-11-02T14:54:20.489260+00:00	provider	Connect Groq GPT-OSS 120B and run synthetic fixtures	Verify actual provider behavior before Docker testing	docs/verification.md	8 validated responses per run; lexical score 7 of 8 on both runs; missing-evidence prompt corrected
+2026-11-02T15:07:58.013135+00:00	live-verification	Run five real Docker fault diagnoses through Groq	Replace simulated-only confidence with actual Engine evidence	artifacts/docker-groq-score.json	5 controlled cases passed
+2026-11-02T15:07:58.013135+00:00	live-verification	Use a missing executable to test Docker startup failures	Duplicate published ports did not fail on this Docker setup	scripts/live-integration.py	startup-error monitoring passed
+2026-11-02T15:07:58.013135+00:00	live-verification	Verify live watcher, MCP, privacy and stats using real containers	Package checks cannot prove runtime integration	artifacts/live-integration.json	9 integration checks passed
+2026-11-02T15:07:58.013135+00:00	live-verification	Verify a real OOM event through the Groq watcher	Prove monitoring and provider work together	artifacts/live-ai-watch.json	event to AI diagnosis passed; test containers removed

@@ -35,6 +35,7 @@ faults = [
     ("oom", ["--memory", "32m", "--memory-swap", "32m", "python:3.12-alpine", "python", "-c", "x = bytearray(256*1024*1024)"], ["memory"], lambda s: not s["Running"] and s["OOMKilled"]),
     ("network", ["python:3.12-alpine", "python", "-c", "import socket; socket.create_connection(('127.0.0.1',5432),2)"], ["service"], lambda s: not s["Running"] and s["ExitCode"] != 0),
     ("permission", ["--user", "65534:65534", "busybox:1.37", "sh", "-c", "touch /root/whydown-test"], ["permission"], lambda s: not s["Running"] and s["ExitCode"] != 0),
+    ("port", ["busybox:1.37", "sh", "-c", "httpd -p 8080; exec httpd -f -p 8080"], ["port"], lambda s: not s["Running"] and s["ExitCode"] != 0),
     ("health", ["--health-cmd", "exit 1", "--health-interval", "1s", "--health-retries", "2", "busybox:1.37", "sleep", "300"], ["health"], lambda s: s.get("Health", {}).get("Status") == "unhealthy"),
 ]
 try:
